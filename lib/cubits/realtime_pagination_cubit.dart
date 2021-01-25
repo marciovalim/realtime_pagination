@@ -3,23 +3,9 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import './realtime_pagination_state.dart';
 
-class RealtimePaginationState {
-  final List<DocumentSnapshot> docs;
-  final bool isLoadingMore;
-
-  const RealtimePaginationState({
-    @required this.docs,
-    @required this.isLoadingMore,
-  });
-
-  factory RealtimePaginationState.initial() {
-    return RealtimePaginationState(
-      docs: List<DocumentSnapshot>(),
-      isLoadingMore: false,
-    );
-  }
-}
+export './realtime_pagination_state.dart';
 
 class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
   final int limit;
@@ -47,11 +33,13 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
     _setIsLoading(true);
     final currentIndex = _pages.length;
     final sub = _getQuery().snapshots().listen((snapshot) {
-      if (snapshot.size == 0) {
+      if (snapshot.docs.length == 0) {
         _onEndReached();
-        return;
+      } else {
+        _hasReachedEnd = false;
       }
       final pageAlreadyExists = currentIndex < _pages.length;
+      if (!pageAlreadyExists && _hasReachedEnd) return;
       final loadedPage = Page(snapshot.docs);
       if (pageAlreadyExists) {
         _pages[currentIndex] = loadedPage;
@@ -60,10 +48,7 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
         _setIsLoading(false);
         _lastDocument = loadedPage.docs.last;
       }
-      emit(RealtimePaginationState(
-        docs: _allPagesFolded,
-        isLoadingMore: _isLoadingMoreData,
-      ));
+      _atualizeState();
     });
     _streamSubs.add(sub);
   }
@@ -89,11 +74,26 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
     }
   }
 
-  List<DocumentSnapshot> get _allPagesFolded {
-    return _pages.fold(
+  void _atualizeState() {
+    emit(RealtimePaginationState(
+      docs: foldAllPages(),
+      isLoadingMore: _isLoadingMoreData,
+    ));
+  }
+
+  List<DocumentSnapshot> foldAllPages() {
+    final allDocs = _pages.fold<List<DocumentSnapshot>>(
       List<DocumentSnapshot>(),
       (allDocs, page) => allDocs..addAll(page.docs),
     );
+    return _removeDocumentsDuplications(allDocs);
+  }
+
+  List<DocumentSnapshot> _removeDocumentsDuplications(
+    List<DocumentSnapshot> docs,
+  ) {
+    final allDocIds = Set<String>();
+    return docs.where((doc) => allDocIds.add(doc.id)).toList();
   }
 
   @override
@@ -107,4 +107,16 @@ class Page {
   final List<DocumentSnapshot> docs;
 
   const Page(this.docs);
+
+  // @override
+  // String toString() {
+  //   var string = "[\n";
+  //   docs.forEach((doc) {
+  //     final data = doc.data();
+  //     string += data["image"];
+  //     string += ", \n";
+  //   });
+  //   string += "]";
+  //   return string;
+  // }
 }

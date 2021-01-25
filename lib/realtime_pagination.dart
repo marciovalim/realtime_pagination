@@ -16,6 +16,8 @@ typedef Widget ItemBuilderDelegate(
 class RealtimePagination extends StatefulWidget {
   final int itemsPerPage;
   final Query query;
+  final bool useRefreshIndicator;
+  final Function onRefresh;
   final double listViewCacheExtent;
   final Widget initialLoading;
   final Widget emptyDisplay;
@@ -25,6 +27,10 @@ class RealtimePagination extends StatefulWidget {
   final ItemBuilderDelegate separatedBuilder;
   final double scrollThreshold;
   final bool reverse;
+
+  /// You can pass your own instance of scrollController.
+  /// No need to dispose, already dispose internally.
+  final ScrollController scrollController;
 
   const RealtimePagination({
     Key key,
@@ -39,6 +45,9 @@ class RealtimePagination extends StatefulWidget {
     this.separatedBuilder,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
+    this.useRefreshIndicator = false,
+    this.onRefresh,
+    this.scrollController,
   }) : super(key: key);
 
   @override
@@ -46,18 +55,16 @@ class RealtimePagination extends StatefulWidget {
 }
 
 class _RealtimePaginationState extends State<RealtimePagination> {
-  final _scrollController = ScrollController();
+  ScrollController _scrollController;
 
   RealtimePaginationCubit _realtimePaginationCubit;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = widget.scrollController ?? ScrollController();
     _scrollController.addListener(_scrollListener);
-    _realtimePaginationCubit = RealtimePaginationCubit(
-      limit: widget.itemsPerPage,
-      query: widget.query,
-    );
+    _start();
   }
 
   void _scrollListener() {
@@ -74,29 +81,47 @@ class _RealtimePaginationState extends State<RealtimePagination> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<RealtimePaginationState>(
-      stream: _realtimePaginationCubit,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.waiting) {
-          final state = snapshot.data;
-          if (state.docs.length == 0) {
-            return widget.emptyDisplay ?? DefaultEmptyDisplay();
-          }
+    if (widget.useRefreshIndicator) {
+      return RefreshIndicator(
+        onRefresh: () async {
+          widget.onRefresh?.call();
+          await _start();
+        },
+        child: _DocsStream(
+          realtimePaginationCubit: _realtimePaginationCubit,
+          scrollController: _scrollController,
+          initialLoading: widget.initialLoading,
+          bottomLoader: widget.bottomLoader,
+          emptyDisplay: widget.emptyDisplay,
+          itemBuilder: widget.itemBuilder,
+          listViewCacheExtent: widget.listViewCacheExtent,
+          reverse: widget.reverse,
+          scrollDirection: widget.scrollDirection,
+          separatedBuilder: widget.separatedBuilder,
+        ),
+      );
+    }
+    return _DocsStream(
+      realtimePaginationCubit: _realtimePaginationCubit,
+      scrollController: _scrollController,
+      initialLoading: widget.initialLoading,
+      bottomLoader: widget.bottomLoader,
+      emptyDisplay: widget.emptyDisplay,
+      itemBuilder: widget.itemBuilder,
+      listViewCacheExtent: widget.listViewCacheExtent,
+      reverse: widget.reverse,
+      scrollDirection: widget.scrollDirection,
+      separatedBuilder: widget.separatedBuilder,
+    );
+  }
 
-          return PaginatedList(
-            reverse: widget.reverse,
-            scrollDirection: widget.scrollDirection,
-            itemBuilder: widget.itemBuilder,
-            scrollController: _scrollController,
-            separatedItemBuilder: widget.separatedBuilder,
-            docs: state.docs,
-            cacheExtent: widget.listViewCacheExtent,
-            isLoadingMore: state.isLoadingMore,
-            bottomLoader: widget.bottomLoader ?? DefaultBottomLoader(),
-          );
-        }
-        return widget.initialLoading ?? DefaultInitialLoading();
-      },
+  Future<void> _start() async {
+    if (_realtimePaginationCubit != null) {
+      await _realtimePaginationCubit.close();
+    }
+    _realtimePaginationCubit = RealtimePaginationCubit(
+      limit: widget.itemsPerPage,
+      query: widget.query,
     );
   }
 
@@ -105,5 +130,62 @@ class _RealtimePaginationState extends State<RealtimePagination> {
     _scrollController.dispose();
     _realtimePaginationCubit.close();
     super.dispose();
+  }
+}
+
+class _DocsStream extends StatelessWidget {
+  final double listViewCacheExtent;
+  final Widget initialLoading;
+  final Widget emptyDisplay;
+  final Widget bottomLoader;
+  final ItemBuilderDelegate itemBuilder;
+  final Axis scrollDirection;
+  final ItemBuilderDelegate separatedBuilder;
+  final bool reverse;
+  final RealtimePaginationCubit _realtimePaginationCubit;
+  final ScrollController _scrollController;
+
+  const _DocsStream({
+    Key key,
+    @required RealtimePaginationCubit realtimePaginationCubit,
+    @required ScrollController scrollController,
+    @required this.listViewCacheExtent,
+    @required this.initialLoading,
+    @required this.emptyDisplay,
+    @required this.bottomLoader,
+    @required this.itemBuilder,
+    @required this.scrollDirection,
+    @required this.separatedBuilder,
+    @required this.reverse,
+  })  : _realtimePaginationCubit = realtimePaginationCubit,
+        _scrollController = scrollController,
+        super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<RealtimePaginationState>(
+      stream: _realtimePaginationCubit,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.waiting) {
+          final state = snapshot.data;
+          if (state.docs.length == 0) {
+            return emptyDisplay ?? DefaultEmptyDisplay();
+          }
+
+          return PaginatedList(
+            reverse: reverse,
+            scrollDirection: scrollDirection,
+            itemBuilder: itemBuilder,
+            scrollController: _scrollController,
+            separatedItemBuilder: separatedBuilder,
+            docs: state.docs,
+            cacheExtent: listViewCacheExtent,
+            isLoadingMore: state.isLoadingMore,
+            bottomLoader: bottomLoader ?? DefaultBottomLoader(),
+          );
+        }
+        return initialLoading ?? DefaultInitialLoading();
+      },
+    );
   }
 }
