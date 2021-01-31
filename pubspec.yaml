@@ -1,6 +1,6 @@
 name: realtime_pagination
 description: A Flutter package that helps use realtime pagination with Firestore
-version: 0.0.6
+version: 0.0.7
 homepage: https://github.com/marciovalim/realtime_pagination
 
 environment:

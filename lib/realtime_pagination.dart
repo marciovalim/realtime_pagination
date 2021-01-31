@@ -13,20 +13,26 @@ typedef Widget ItemBuilderDelegate(
   DocumentSnapshot docSnapshot,
 );
 
+typedef Widget PaginatedBuilderDelegate(
+  int itemCount,
+  ScrollController controller,
+  Widget Function(BuildContext context, int index) itemBuilder,
+);
+
 class RealtimePagination extends StatefulWidget {
   final int itemsPerPage;
   final Query query;
   final bool useRefreshIndicator;
   final Function onRefresh;
-  final double listViewCacheExtent;
   final Widget initialLoading;
   final Widget emptyDisplay;
   final Widget bottomLoader;
-  final ItemBuilderDelegate itemBuilder;
-  final Axis scrollDirection;
-  final ItemBuilderDelegate separatedBuilder;
   final double scrollThreshold;
-  final bool reverse;
+  final ItemBuilderDelegate itemBuilder;
+
+  /// Return a ListView.builder or ListView.separated, assigning the passed properties.
+  /// The rest is fully customizable.
+  final PaginatedBuilderDelegate customPaginatedBuilder;
 
   /// You can pass your own instance of scrollController.
   /// No need to dispose, already dispose internally.
@@ -37,14 +43,11 @@ class RealtimePagination extends StatefulWidget {
     @required this.query,
     @required this.itemsPerPage,
     @required this.itemBuilder,
+    this.customPaginatedBuilder,
     this.scrollThreshold = 0.85,
     this.initialLoading,
     this.emptyDisplay,
-    this.listViewCacheExtent,
     this.bottomLoader,
-    this.separatedBuilder,
-    this.scrollDirection = Axis.vertical,
-    this.reverse = false,
     this.useRefreshIndicator = false,
     this.onRefresh,
     this.scrollController,
@@ -88,30 +91,24 @@ class _RealtimePaginationState extends State<RealtimePagination> {
           await _start();
         },
         child: _DocsStream(
+          paginatedBuilderDelegate: widget.customPaginatedBuilder,
           realtimePaginationCubit: _realtimePaginationCubit,
           scrollController: _scrollController,
           initialLoading: widget.initialLoading,
           bottomLoader: widget.bottomLoader,
           emptyDisplay: widget.emptyDisplay,
           itemBuilder: widget.itemBuilder,
-          listViewCacheExtent: widget.listViewCacheExtent,
-          reverse: widget.reverse,
-          scrollDirection: widget.scrollDirection,
-          separatedBuilder: widget.separatedBuilder,
         ),
       );
     }
     return _DocsStream(
+      paginatedBuilderDelegate: widget.customPaginatedBuilder,
       realtimePaginationCubit: _realtimePaginationCubit,
       scrollController: _scrollController,
       initialLoading: widget.initialLoading,
       bottomLoader: widget.bottomLoader,
       emptyDisplay: widget.emptyDisplay,
       itemBuilder: widget.itemBuilder,
-      listViewCacheExtent: widget.listViewCacheExtent,
-      reverse: widget.reverse,
-      scrollDirection: widget.scrollDirection,
-      separatedBuilder: widget.separatedBuilder,
     );
   }
 
@@ -134,29 +131,23 @@ class _RealtimePaginationState extends State<RealtimePagination> {
 }
 
 class _DocsStream extends StatelessWidget {
-  final double listViewCacheExtent;
   final Widget initialLoading;
   final Widget emptyDisplay;
   final Widget bottomLoader;
   final ItemBuilderDelegate itemBuilder;
-  final Axis scrollDirection;
-  final ItemBuilderDelegate separatedBuilder;
-  final bool reverse;
   final RealtimePaginationCubit _realtimePaginationCubit;
   final ScrollController _scrollController;
+  final PaginatedBuilderDelegate paginatedBuilderDelegate;
 
   const _DocsStream({
     Key key,
     @required RealtimePaginationCubit realtimePaginationCubit,
     @required ScrollController scrollController,
-    @required this.listViewCacheExtent,
     @required this.initialLoading,
     @required this.emptyDisplay,
     @required this.bottomLoader,
     @required this.itemBuilder,
-    @required this.scrollDirection,
-    @required this.separatedBuilder,
-    @required this.reverse,
+    @required this.paginatedBuilderDelegate,
   })  : _realtimePaginationCubit = realtimePaginationCubit,
         _scrollController = scrollController,
         super(key: key);
@@ -173,13 +164,10 @@ class _DocsStream extends StatelessWidget {
           }
 
           return PaginatedList(
-            reverse: reverse,
-            scrollDirection: scrollDirection,
             itemBuilder: itemBuilder,
+            paginatedBuilder: paginatedBuilderDelegate,
             scrollController: _scrollController,
-            separatedItemBuilder: separatedBuilder,
             docs: state.docs,
-            cacheExtent: listViewCacheExtent,
             isLoadingMore: state.isLoadingMore,
             bottomLoader: bottomLoader ?? DefaultBottomLoader(),
           );
