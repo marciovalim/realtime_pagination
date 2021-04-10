@@ -12,7 +12,7 @@ class RealtimePaginationState {
 
   factory RealtimePaginationState.initial() {
     return RealtimePaginationState(
-      docs: List<DocumentSnapshot>(),
+      docs: <DocumentSnapshot>[],
       isLoadingMore: false,
     );
   }

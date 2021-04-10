@@ -20,14 +20,31 @@ typedef Widget PaginatedBuilderDelegate(
 );
 
 class RealtimePagination extends StatefulWidget {
+  /// Quantity of items per page
   final int itemsPerPage;
+
+  /// The Firestore query to make
   final Query query;
+
+  /// If should use RefreshIndicator
   final bool useRefreshIndicator;
+
+  /// Function to call when refreshed, if useRefreshIndicator is true.
   final Function onRefresh;
+
+  /// Widget to show when first fetching the query.
   final Widget initialLoading;
+
+  /// Widget to show when the query return no documents
   final Widget emptyDisplay;
+
+  /// Widget to show at the under the last document, when the package is loading more documents.
   final Widget bottomLoader;
+
+  /// The scroll threshold before start to load new documents. (0...1)
   final double scrollThreshold;
+
+  /// The Function called to build a document loaded.
   final ItemBuilderDelegate itemBuilder;
 
   /// Return a ListView.builder or ListView.separated, assigning the passed properties.

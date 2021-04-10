@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:realtime_pagination/realtime_pagination.dart';
-import 'package:realtime_pagination_example/models/post.dart';
-import 'package:realtime_pagination_example/widgets/post_widget.dart';
+
+import 'models/post.dart';
+import 'widgets/post_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

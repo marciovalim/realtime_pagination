@@ -23,8 +23,8 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
   bool get isLoadingMoreData => _isLoadingMoreData;
   bool _isLoadingMoreData = false;
 
-  final _pages = List<Page>();
-  final _streamSubs = List<StreamSubscription<QuerySnapshot>>();
+  final _pages = <Page>[];
+  final _streamSubs = <StreamSubscription<QuerySnapshot>>[];
   DocumentSnapshot _lastDocument;
   bool _hasReachedEnd = false;
 
@@ -83,7 +83,7 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
 
   List<DocumentSnapshot> foldAllPages() {
     final allDocs = _pages.fold<List<DocumentSnapshot>>(
-      List<DocumentSnapshot>(),
+      <DocumentSnapshot>[],
       (allDocs, page) => allDocs..addAll(page.docs),
     );
     return _removeDocumentsDuplications(allDocs);
