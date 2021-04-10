@@ -7,13 +7,13 @@ import 'widgets/paginated_list.dart';
 import 'widgets/default_empty_display.dart';
 import 'widgets/default_bottom_loader.dart';
 
-typedef Widget ItemBuilderDelegate(
+typedef ItemBuilderDelegate = Widget Function(
   int index,
   BuildContext context,
   DocumentSnapshot docSnapshot,
 );
 
-typedef Widget PaginatedBuilderDelegate(
+typedef PaginatedBuilderDelegate = Widget Function(
   int itemCount,
   ScrollController controller,
   Widget Function(BuildContext context, int index) itemBuilder,
@@ -172,11 +172,11 @@ class _DocsStream extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<RealtimePaginationState>(
-      stream: _realtimePaginationCubit,
+      stream: _realtimePaginationCubit.stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.waiting) {
           final state = snapshot.data;
-          if (state.docs.length == 0) {
+          if (state.docs.isEmpty) {
             return emptyDisplay ?? DefaultEmptyDisplay();
           }
 

@@ -33,7 +33,7 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
     _setIsLoading(true);
     final currentIndex = _pages.length;
     final sub = _getQuery().snapshots().listen((snapshot) {
-      if (snapshot.docs.length == 0) {
+      if (snapshot.docs.isEmpty) {
         _onEndReached();
       } else {
         _hasReachedEnd = false;
@@ -92,7 +92,7 @@ class RealtimePaginationCubit extends Cubit<RealtimePaginationState> {
   List<DocumentSnapshot> _removeDocumentsDuplications(
     List<DocumentSnapshot> docs,
   ) {
-    final allDocIds = Set<String>();
+    final allDocIds = <String>{};
     return docs.where((doc) => allDocIds.add(doc.id)).toList();
   }
 
